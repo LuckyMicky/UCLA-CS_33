@@ -1,0 +1,29 @@
+/*Daxuan Shu
+UID: 204853061*/
+
+
+A.
+
+&A[i][j][k] = start_loc_of_A + 8*(T*(i*S + j) + k) 
+where L = size of data type in byte
+i = row number of element
+j = column number of element
+k = height of element
+
+B.
+
+Line 2, rax = 3j.
+Line 3, rax = 13j.
+Line 4, j = i.
+Line 5, i = i << 6.
+Line 6, i = i + j.
+Line 7. i = i + 13j.
+Line 8, k = k + i.
+
+From line 11, R*S*T*8 = 3640. 
+Thus, R*S*T = 455. R = 455/65 = 7. S*T = 65. T = 13. S = 65/13 = 5
+
+Thus, R = 7, S = 5, T = 13.
+
+
+ 
