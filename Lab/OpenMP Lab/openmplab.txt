@@ -1,0 +1,159 @@
+Daxuan Shu
+204853061
+CS_33
+openmplab.txt
+
+1. Download
+I first tried to wget the OpenMP materials but it did not work.
+Then I tried to download the materials from CCLE to my Mac and then SCP to the lnxsrv.
+a. Download to my Mac from CCLE
+b. Open a new terminal
+
+$ scp ~/Downloads/openmplab.tar daxuan@lnxsrv.seas.ucla.edu:~/Fall2017/CS_33/OpenMP_Lab
+
+It works!
+
+Then untar the source file
+
+$ tar xvf openmplab.tar
+
+
+2. Find out original run time
+
+$ make clean
+$ make seq
+$ ./seq
+
+Output(the original run time):
+
+FUNC TIME : 0.469154
+TOTAL TIME : 2.224597
+
+3.Analyzing bottleneck
+
+Now, making the program with GPROF enabled to see where we can improve the function to run faster.
+Note that making it with GPROF will make the function and over program time slower, but the relative speeds remain constant.
+
+
+$ make seq GPROF=1
+$ ./seq
+
+FUNC TIME : 0.545992
+TOTAL TIME : 2.346106
+
+$ gprof seq | less
+
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  ms/call  ms/call  name    
+ 62.58      0.35     0.35       15    23.36    25.01  func1
+ 23.24      0.48     0.13  5177344     0.00     0.00  rand2
+  5.36      0.51     0.03                             sequence
+  3.58      0.53     0.02   491520     0.00     0.00  findIndexBin
+  3.58      0.55     0.02        1    20.03   125.48  addSeed
+  1.79      0.56     0.01        1    10.01    10.01  imdilateDisk
+  0.00      0.56     0.00   983042     0.00     0.00  round
+  0.00      0.56     0.00       16     0.00     0.00  dilateMatrix
+  0.00      0.56     0.00       15     0.00     0.00  func2
+  0.00      0.56     0.00       15     0.00     0.00  func3
+  0.00      0.56     0.00       15     0.00     0.00  func4
+  0.00      0.56     0.00       15     0.00     1.34  func5
+  0.00      0.56     0.00       15     0.00     0.00  rand1
+  0.00      0.56     0.00        2     0.00     0.00  get_time
+  0.00      0.56     0.00        1     0.00     0.00  elapsed_time
+  0.00      0.56     0.00        1     0.00     0.00  fillMatrix
+  0.00      0.56     0.00        1     0.00     0.00  func0
+  0.00      0.56     0.00        1     0.00     0.00  getNeighbors
+  
+From the above output, we can see that func1 takes a significantly higher amount of time than any other function.
+
+Thus, I opened the func.c and add code to take advantage of the 32 processors of the linux 09 server to parallelize code within the func1.
+
+We begin by parallelizing the for loops but realizing that for the nested for loop,
+all we need to do is instantiate parallelism only once outside the outermost for loop and then make some of the variables private for multiple usages within the code block.
+This parallelization alone gives us ~11x speedup.
+
+$ make clean
+$ make omp
+$ ./omp
+
+FUNC TIME : 0.032732
+TOTAL TIME : 1.818133
+
+The speedup is : S_p = T_1 / T_p
+    	             = 0.469154 / 0.032732 = 14.33
+
+Thus the speedup is 14.33x !
+
+4. Check correctness
+
+$ make check
+
+gcc -o omp  -O3 -fopenmp filter.c main.c func.c util.c -lm
+cp omp filter
+./filter
+FUNC TIME : 0.029580
+TOTAL TIME : 1.809538
+diff --brief correct.txt output.txt
+
+Since it outputs nothing. It is correct.
+
+5. Check memory leak
+
+$ make omp MTRACE=1
+$ ./omp
+
+FUNC TIME : 0.030808
+TOTAL TIME : 1.856713
+
+$ make checkmem
+
+mtrace filter mtrace.out || true
+
+Memory not freed:
+-----------------
+           Address     Size     Caller
+0x0000000000a15080   0x1e90  at 0x7f4d7abd7869
+0x0000000000a16f20     0xc0  at 0x7f4d7abd7869
+0x0000000000a16ff0     0xf8  at 0x7f4d7abd78b9
+0x0000000000a170f0    0x240  at 0x7f4d7b107f45
+0x0000000000a17340    0x240  at 0x7f4d7b107f45
+0x0000000000a17590    0x240  at 0x7f4d7b107f45
+0x0000000000a177e0    0x240  at 0x7f4d7b107f45
+0x0000000000a17a30    0x240  at 0x7f4d7b107f45
+0x0000000000a17c80    0x240  at 0x7f4d7b107f45
+0x0000000000a17ed0    0x240  at 0x7f4d7b107f45
+0x0000000000a18120    0x240  at 0x7f4d7b107f45
+0x0000000000a18370    0x240  at 0x7f4d7b107f45
+0x0000000000a185c0    0x240  at 0x7f4d7b107f45
+0x0000000000a18810    0x240  at 0x7f4d7b107f45
+0x0000000000a18a60    0x240  at 0x7f4d7b107f45
+0x0000000000a18cb0    0x240  at 0x7f4d7b107f45
+0x0000000000a18f00    0x240  at 0x7f4d7b107f45
+0x0000000000a19150    0x240  at 0x7f4d7b107f45
+0x0000000000a193a0    0x240  at 0x7f4d7b107f45
+0x0000000000a195f0    0x240  at 0x7f4d7b107f45
+0x0000000000a19840    0x240  at 0x7f4d7b107f45
+0x0000000000a19a90    0x240  at 0x7f4d7b107f45
+0x0000000000a19ce0    0x240  at 0x7f4d7b107f45
+0x0000000000a19f30    0x240  at 0x7f4d7b107f45
+0x0000000000a1a180    0x240  at 0x7f4d7b107f45
+0x0000000000a1a3d0    0x240  at 0x7f4d7b107f45
+0x0000000000a1a620    0x240  at 0x7f4d7b107f45
+0x0000000000a1a870    0x240  at 0x7f4d7b107f45
+0x0000000000a1aac0    0x240  at 0x7f4d7b107f45
+0x0000000000a1ad10    0x240  at 0x7f4d7b107f45
+0x0000000000a1af60    0x240  at 0x7f4d7b107f45
+0x0000000000a1b1b0    0x240  at 0x7f4d7b107f45
+
+It looks like a function at 0x240 has problems;
+it leaks mempry for every 30 threads.
+
+I tried to use gdb to find something but I could not find anything for this leak.
+
+6. Check Readability
+
+$ expand func.c openmplab.txt |
+  awk '/\r/ || 200 < length'
