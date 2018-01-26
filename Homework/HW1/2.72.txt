@@ -1,0 +1,20 @@
+CS_33 Fall2017
+Daxuan Shu
+UID: 204853061
+HW1 2.72
+
+A.
+
+Since the sizeof operator returns a value of type size_t, which is unsigned.
+When a signed number operates with an unsigned number, the result will be caste
+d to unsigned.
+Therefore, in the if conditional statement ( maxbytes - sizeof(val) >=0), it
+will always be true since the result is unsigned and the value is always non-
+negative.
+
+B.
+
+We can rewrite the condition test as:
+
+maxbytes >= 0 && maxbytes >= sizeof(val)
+
