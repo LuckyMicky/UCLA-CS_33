@@ -1,0 +1,70 @@
+Name: Daxuan Shu
+UID: 204853061
+Fall 2017
+CS_33
+Pexexlab.txt
+
+1. Gather information for trace
+
+$ gdb ~eggert/bin64/bin/emacs-25.2
+
+Using gdb to examing the behaviors of emacs-25.2
+
+2. Setting a break point for Ftimes function
+
+(gdb) break Ftimes
+
+Breakpoint 1 at 0x544fb0: file data.c, line 2815.
+
+3. Ask gdb to  directly print out the assenmbly code. 
+
+(gdb) set disassemble-next-line on
+
+4. Record the output from gdb to gdb.txt
+
+(gdb) set logging on
+
+5. Debug the program 
+
+(gdb) r -Q -batch -eval '(print (* 1250284240 -1844255039))'
+
+6. Step into every instructions of Ftimes function and the functions called,
+   either directtly and indirectly
+
+(gdb) si
+
+7. When I wanted to check the values of some registers, I used the command:
+
+(gdb) info registers $(nameOfRegisters) 
+
+***************************************************************************
+***************************************************************************
+* Examine Integer Overflow *
+
+I first create a new emacs file called testovf.c
+
+$ emacs testovf.c
+
+Then copy and paste the code inside the file and save it
+Save:
+C-x C-s
+Quit:
+C-x C-c
+
+Then compile the function in three different ways:
+(1) with -O2, (2) with -O2 -fwrapv, (3) with -O2 -fsanitize=undefined
+-------------------------------------------
+$ gcc -c -O2 testovf.c
+
+Dump the assembly instructions to a file
+
+$ objdump -d testovf.o > O2.txt
+-------------------------------------------
+And then repeat the block with the second and third option instead of -O2
+and dump the assembly instructions into files named O2_fwrapv.txt and
+O2_fsani_undef.txt respectively
+
+
+
+
+

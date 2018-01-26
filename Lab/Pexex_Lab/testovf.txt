@@ -1,0 +1,97 @@
+/* Daxuan Shu
+   testovf.txt */
+
+// -O2
+
+testovf.o:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+0000000000000000 <testovf>:
+   0:	31 c0                	xor    %eax,%eax
+   2:	c3                   	retq   
+
+****************************************
+*            Description               *
+****************************************
+Since the -O2 knows that there is an integer overflow and the result should
+be false, it directly returns 0 without any computation.
+
+
+// -O2 -fwrapv
+
+
+testovf.o:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+0000000000000000 <testovf>:
+   0:	48 b8 ff ff ff ff ff 	movabs $0x7fffffffffffffff,%rax
+   7:	ff ff 7f 
+   a:	48 01 f8             	add    %rdi,%rax
+   d:	48 39 f8             	cmp    %rdi,%rax
+  10:	0f 9c c0             	setl   %al
+  13:	c3                   	retq   
+
+
+****************************************
+*            Description               *
+****************************************
+The -fweapv option computes as normal and compare the result.
+This is basically a direct translation of the source code.
+Thus, it will have the overflow without any warning,
+
+
+// -O2 -fsanitize=undefined
+
+testovf.o:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+0000000000000000 <testovf>:
+   0:	55                   	push   %rbp
+   1:	53                   	push   %rbx
+   2:	48 ba ff ff ff ff ff 	movabs $0x7fffffffffffffff,%rdx
+   9:	ff ff 7f 
+   c:	48 89 fd             	mov    %rdi,%rbp
+   f:	48 89 fb             	mov    %rdi,%rbx
+  12:	48 83 ec 08          	sub    $0x8,%rsp
+  16:	48 01 d5             	add    %rdx,%rbp
+  19:	70 0d                	jo     28 <testovf+0x28>
+  1b:	48 39 dd             	cmp    %rbx,%rbp
+  1e:	0f 9c c0             	setl   %al
+  21:	48 83 c4 08          	add    $0x8,%rsp
+  25:	5b                   	pop    %rbx
+  26:	5d                   	pop    %rbp
+  27:	c3                   	retq   
+  28:	48 89 fe             	mov    %rdi,%rsi
+  2b:	bf 00 00 00 00       	mov    $0x0,%edi
+  30:	e8 00 00 00 00       	callq  35 <testovf+0x35>
+  35:	eb e4                	jmp    1b <testovf+0x1b>
+
+****************************************
+*            Description               *
+****************************************
+
+rdx = rbx = rbp = long_max
+Thus, if rbp += rdx overflows,
+from gcc -S -O2 -fsanitize=undefined
+
+movq    big(%rip), %rbx
+movq    %rbx, %rbp
+addq    %rdx, %rbp
+jo	.L6
+
+.L6:
+.cfi_restore_state
+movq    %rbx, %rsi
+movl    $.Lubsan_data1, %edi
+call    __ubsan_handle_add_overflow
+jmp     .L2
+
+I found that gcc called a function to handle the overflow
+If there is no overflow, it will skip the instruction at 0x1f and do normal
+comparisons.

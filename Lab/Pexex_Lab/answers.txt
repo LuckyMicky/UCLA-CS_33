@@ -1,0 +1,99 @@
+/* Daxuan Shu
+   answer.txt */
+
+1.
+The instruction that causes incorrect result is this instruction:
+
+0x0000000000544dfc <arith_driver+284>:       4a 8d 04 a5 02 00 00 00 lea    0x2(,%r12,4),%rax
+
+Where %r12 = dfffffffdceaced0, and 4*$r12+2 results in an overflow from multiplication.
+
+In gdb, I saw that the instruction was from lisp_h_make_number.
+# define lisp_h_make_number(n) \
+    XIL ((EMACS_INT) (((EMACS_UINT) (n) << INTTYPEBITS) + Lisp_Int0))
+
+This shows that the INTTYPEBITS is 2, thus the multiple of 4, Lisp_Int0 is 2.
+
+By checking from the reading, all the other types are converted to Lisp_type, where Emacs integers
+are 30 bits. The range for the 30 bits intergers is from -536,870,912 to 536,870,911.
+
+2.
+In the data.c file:
+
+3732   DEFVAR_LISP ("most-negative-fixnum", Vmost_negative_fixnum,
+3733            doc: /* The smallest value that is representable in a Lisp
+integer.  */);
+3734   Vmost_negative_fixnum = make_number (MOST_NEGATIVE_FIXNUM);
+3735   XSYMBOL (intern_c_string ("most-negative-fixnum"))->constant = 1;
+
+I saw that "most-negative-fixnum" has the value:
+Vmost_nagative_fixnum and Vmost_negative_fixnum is defined as the value of
+MOST_nagative_FIXNUM
+
+In "lisp.h":
+#define MOST_POSITIVE_FIXNUM (EMACS_INT_MAX >> INTTYPEBITS)
+
+INTTYPEBITS == 2
+
+since we use x86-64 to compile emacs and EMACS_INT_MAX is defined as LONG_MAX, which is 0x7fffffffffffffff.
+Then right shift INT_MAX by 2, we got: 0x1fffffffffffffff, which is exactly -2305843009213693951 for singed.
+
+3.
+
+It clearly that the multiplication will have the overflow.
+I checked that data.c file's arith_driver and find the following:
+
+case Amult:
+         overflow |= INT_MULTIPLY_WRAPV (accum, next, &accum);
+         break;
+
+Then I found inside the lisp.h,
+/* Compute A + B, A - B, A * B, respectively, storing the result into *R.
+   Return 1 if the result overflows.  See above for restrictions.  */
+#define INT_MULTIPLY_WRAPV(a, b, r) \
+  _GL_INT_OP_WRAPV (a, b, r, *, __builtin_mul_overflow, INT_MULTIPLY_OVERFLOW)
+
+/* Store A <op> B into *R, where OP specifies the operation.
+   BUILTIN is the builtin operation, and OVERFLOW the overflow predicate.
+   See above for restrictions.  */
+#if 5 <= __GNUC__ || __has_builtin (__builtin_add_overflow)
+# define _GL_INT_OP_WRAPV(a, b, r, op, builtin, overflow) builtin (a, b, r)
+
+From the above comments and codes, I know that when the first overflow occurs, *(&accum) will be assigned as 1.
+Then, at the second time when overflow occurs, accum is assigned to most-positive-fixnum.
+At the thied times overflow multiplication, accum = 1.
+
+4. If compiled with -fwrapv option, there would not be a problem because the fact that emacs has interger
+representations in 30 bits, ranging from 0x0x1000000000000000 to 0x1fffffffffffffff. Thus, the signed interger
+overflow will theoretically never occur during the execution of Emacs.
+
+5. By backtracing the program in gdb,I found that there is a function called Fformat-time_string with source
+code in editfns.c:2042.
+In the second visit of editfns.c:2427:
+
+if (tzstring)
+    {
+      /* Modify TZVAL in place.  Although this is dicey in a
+     multithreaded environment, we know of no portable alternative.
+     Calling putenv or setenv could crash some other thread.  */
+      tzval[0] = 'T';
+      strcpy (tzval + tzeqlen, tzstring);
+    }
+
+where tzval[0] = 'T' modified value at tzstring.
+
+I want to konw where does it point to:
+
+(gdb) p tzval
+$47 = 0x1485b70 'X' <repeats 200 times>...
+(gdb) n
+2428    in editfns.c
+(gdb) p tzval
+$48 = 0x1485b70 "T", 'X' <repeats 199 times>...
+(gdb) p tzstring
+$49 = 0x1485ae9 'X' <repeats 135 times>, "T", 'X' <repeats 64 times>...
+
+Thus, I found that tzval points to the address where 135 bytes after tzstring.
+Thus, when writing some values to tzval, parts of tzstring is overwritten.
+Thus, when we are trying to strcpy from tzstring to tzval+tzeglen, segmentation fault occurs due to address overlap.
+xpalloc() should cause the problem since it reallocates tzval to the address 135 bytes after tzstring.
