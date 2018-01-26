@@ -1,0 +1,29 @@
+Name : Daxuan Shu
+UID: 204853061
+CS_33 HW3 3.70
+
+A. e1.p    0   because e1.p is the first element of struct e1.
+   e1.y    8   because e1.p is a pointer and needs 8 bytes to store the address
+   e2.x    0   because e2.x is the first element of struct e2.
+   e2.next 8   because e2.x's type is long that takes 8 bytes in memory.
+
+B. struct e1 requires 16 bytes in total, 8 for long *p and 8 for long y.
+   struct e2 requires 16 bytes in total, 8 for long x and 8 for union ele *next
+   union ele require a total of 16 bytes.
+
+C. 
+   From line2, %rax = *(up + 8)
+   From line3, since %rdx = *(*(up + 8)), which means %rax must be up->e2.next
+   	       and %rdx must be *(up -> e2.next) because of double dereference.
+   From line4, %rdx = *(*(up -> e2.next)). Both e1.p and e2.x can be pointed to
+   	       by *(up->e2.next). Considering the fact that it is also a point-
+	       er itself, I believe %rdx = *(up->e2.next->e1.p)
+   From line5, 8(%rax) = *(up->e2.next).el.y. Since the union ele* and long sub
+   	       traction does not exist.
+	       %rdx = *(up->e2.next->e1.p) - up->e2.next->e1.y
+   From line6, (%rdi) = up->x because the value stored in %rdx is type long. 
+
+Thus
+void proc (union ele *up){
+   	up->e2.x = *(up->e2.next->e1.p) - up->e2.next->e1.y;
+}

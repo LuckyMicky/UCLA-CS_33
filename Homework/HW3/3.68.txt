@@ -1,0 +1,26 @@
+Name: Daxuan Shu
+UID: 204853061
+CS 33 HW3  Problem 3.68
+
+===================================
+From line 4 : movq %rax, 184(%rdi), we can know that p->y represents 184(%rdi),
+which %rax stores the value of v1+v2.
+
+Since the type of p is str1, p-y gives 184(%rdi) in assembly code. This means
+int x[A][B] can take either 180 or 184 bytes because int is 4 byte and the 
+alignment for long is 8 bytes.
+I have: 180 <= 4*A*B <= 184 -------------------(1)
+
+Since the alignment of int t is 4 bytes, in type str2, char array[B] took 8 
+bytes including alignment. Thus, the size of char array[B] is between 5 and 8 
+bytes.
+I have: 5 <= B <= 8     -------------------(2)
+
+From long v2 = q->u 's assemble code addq 32(%rsi), %rax, I know that the size
+of array[B]+int t +short s[A] = 32.
+
+I have :26 <= 8 + 4 + 2*A <=32  -----------------(3)
+
+From equation (1),(2) and (3), The only solution is A = 9 and B = 5.
+
+
