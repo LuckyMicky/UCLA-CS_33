@@ -1,5 +1,5 @@
 Name : Daxuan Shu
-UID: 204853061
+UID: 2*******1
 CS_33 HW3 3.70
 
 A. e1.p    0   because e1.p is the first element of struct e1.

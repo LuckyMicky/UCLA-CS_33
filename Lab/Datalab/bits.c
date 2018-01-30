@@ -1,7 +1,7 @@
 /* 
  * CS:APP Data Lab 
  * 
- * <Daxuan Shu : 204853061>
+ * <Daxuan Shu : 2*******1>
  * 
  * bits.c - Source file with your solutions to the Lab.
  *          This is the file you will hand in to your instructor.
